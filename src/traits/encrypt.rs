@@ -26,11 +26,11 @@ pub trait Encrypt: Sized {
     /// This method will create a new [Key] and can stall for a significant amount of time
     /// depending on the number of key iterations(hashing rounds) used
     fn encrypt(&self, secret: &str) -> Result<Encrypted<Self>, Self::Error> {
-        Encrypted::encrypt(KeySaltPair::new(secret)?, self.data_to_encrypt()?.into())
+        Encrypted::new(KeySaltPair::new(secret)?, self.data_to_encrypt()?.into())
     }
 
     fn encrypt_with_key_and_salt(&self, key_salt_pair: KeySaltPair<Self>) -> Result<Encrypted<Self>, Self::Error> {
-        Encrypted::encrypt(key_salt_pair, self.data_to_encrypt()?.into())
+        Encrypted::new(key_salt_pair, self.data_to_encrypt()?.into())
     }
 
     fn create_key_and_salt<T: AsRef<[u8]>>(secret: T) -> Result<KeySaltPair<Self>, Self::Error> {

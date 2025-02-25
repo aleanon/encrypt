@@ -16,12 +16,12 @@ pub trait Key: Default + ZeroizeOnDrop {
             iterations,
             salt.as_bytes(),
             secret.as_ref(),
-            key.key_data_mut(),
+            key.as_bytes_mut(),
         );
         key
     }
 
-    fn key_data_mut(&mut self) -> &mut [u8];
+    fn as_bytes_mut(&mut self) -> &mut [u8];
 
     fn as_bytes(&self) -> &[u8];
 

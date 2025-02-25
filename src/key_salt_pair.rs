@@ -11,7 +11,7 @@ pub struct KeySaltPair<T: Encrypt> {
 }
 
 impl<T> KeySaltPair<T> where 
-T: Encrypt,
+    T: Encrypt,
 {
     
     pub fn new<U: AsRef<[u8]>>(source: U) -> Result<Self, CryptoError> {

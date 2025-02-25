@@ -19,7 +19,7 @@ impl Default for Key128Bit {
 
 
 impl Key for Key128Bit {
-    fn key_data_mut(&mut self) -> &mut [u8] {
+    fn as_bytes_mut(&mut self) -> &mut [u8] {
         &mut self.0
     }
 
@@ -54,7 +54,7 @@ impl Default for Key256Bit {
 }
 
 impl Key for Key256Bit {
-    fn key_data_mut(&mut self) -> &mut [u8] {
+    fn as_bytes_mut(&mut self) -> &mut [u8] {
         &mut self.0
     }
 

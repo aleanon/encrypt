@@ -2,7 +2,6 @@ use std::marker::PhantomData;
 
 use ring::aead::Nonce;
 use serde::{Deserialize, Serialize};
-use zeroize::Zeroize;
 
 use crate::nonce_sequence::NonceSequence;
 
@@ -13,7 +12,7 @@ use super::{error::CryptoError, traits::encrypt::Encrypt, key_salt_pair::KeySalt
 #[allow(type_alias_bounds)]
 type Algo<T> where T: Encrypt = T::AlgorithmType;
 #[allow(type_alias_bounds)]
-type KeyKind<T> where T: Encrypt = <T::AlgorithmType as EncryptionAlgorithm>::KeyType;
+type KeyType<T> where T: Encrypt = <T::AlgorithmType as EncryptionAlgorithm>::KeyType;
 
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -29,37 +28,45 @@ impl<T> Encrypted<T>
         T: Encrypt,
     {
     
-    pub(crate) fn encrypt(key_salt_pair: KeySaltPair<T>, mut data: Vec<u8>) -> Result<Self, T::Error> {
+    pub(crate) fn new(mut key_salt_pair: KeySaltPair<T>, data: Vec<u8>) -> Result<Self, T::Error> {
+        let mut instance = Self {
+            data,
+            salt: key_salt_pair.take_salt(),
+            nonce_bytes: [0u8; 12],
+            _marker: PhantomData,
+        };
 
+        instance.encrypt(key_salt_pair.key())?;        
+
+        Ok(instance)
+    }
+
+    pub(crate) fn encrypt(&mut self, key: &impl Key) -> Result<(), T::Error> {
         let nonce_sequence = NonceSequence::new()
             .map_err(|_| CryptoError::FailedToCreateNonce)?;
 
-        let nonce_bytes = nonce_sequence.get_current_as_bytes();
+        self.nonce_bytes = nonce_sequence.get_current_as_bytes();
 
-        Algo::<T>::encrypt(&mut data, key_salt_pair.key(), nonce_sequence)?;
-
-        Ok(Self {
-            data,
-            salt: key_salt_pair.into_salt(),
-            nonce_bytes,
-            _marker: PhantomData,
-        })
+        Algo::<T>::encrypt(&mut self.data, key, nonce_sequence)?;
+        
+        Ok(())
     }
 
-    pub fn decrypt(&self, secret: impl AsRef<[u8]>) -> Result<T, T::Error> {
-        let key = KeyKind::<T>::create_key(T::KEY_ITERATIONS, secret, &self.salt);
+    pub fn decrypt_with_secret(&mut self, secret: impl AsRef<[u8]>) -> Result<T, T::Error> {
+        let key = KeyType::<T>::create_key(T::KEY_ITERATIONS, secret, &self.salt);
+        self.decrypt_with_key(key)        
+    }
 
+    pub fn decrypt_with_key(&mut self, key: impl Key) -> Result<T, T::Error> {
         let nonce_sequence = NonceSequence::with_nonce(&Nonce::assume_unique_for_key(
             self.nonce_bytes.clone(),
         ));
         
-        let mut data = self.data.clone();
-
-        let decrypted = Algo::<T>::decrypt(data.as_mut_slice(), &key, nonce_sequence)?;
+        let decrypted = Algo::<T>::decrypt(self.data.as_mut_slice(), &key, nonce_sequence)?;
  
         let result:T = T::from_decrypted_data(decrypted)?;
 
-        data.zeroize();
+        self.encrypt(&key)?;
 
         Ok(result)
     }
@@ -71,6 +78,7 @@ impl<T> Encrypted<T>
     pub fn encrypted_data(&self) -> &[u8] {
         &self.data
     }
+
 }
 
 
@@ -116,14 +124,14 @@ impl Encrypt for String {
         let phrase = String::from("encrypt this");
 
         let secret = "password123";
-        let encrypted = phrase.encrypt(secret).expect("Failed to encrypt mnemonic");
+        let mut encrypted = phrase.encrypt(secret).expect("Failed to encrypt mnemonic");
 
 
         if let Ok(cypher_text) = std::str::from_utf8(encrypted.encrypted_data()) {
             assert!(!cypher_text.contains(&phrase))
         }
         
-        let decrypted = encrypted.decrypt(secret).expect("Failed to decrypt mnemonic");
+        let decrypted = encrypted.decrypt_with_secret(secret).expect("Failed to decrypt mnemonic");
         assert_eq!(phrase, decrypted);
     }
 }
