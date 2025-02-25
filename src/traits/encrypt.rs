@@ -2,7 +2,7 @@ use std::num::NonZeroU32;
 
 
 use crate::{
-    error::Error, 
+    error::CryptoError, 
     encrypted::Encrypted, 
     key_salt_pair::KeySaltPair, 
     traits::encryption_algorithm::EncryptionAlgorithm, 
@@ -10,7 +10,7 @@ use crate::{
 
 /// 
 pub trait Encrypt: Sized {
-    type Error: From<Error>;
+    type Error: From<CryptoError>;
     type AlgorithmType: EncryptionAlgorithm;
 
     /// Number of hashing rounds when creating a key from the provided secret
@@ -24,12 +24,16 @@ pub trait Encrypt: Sized {
 
     /// Encrypts data supplied from this type and wraps it in an [Encrypted<T>]
     /// This method will create a new [Key] and can stall for a significant amount of time
-    /// depending on the number of key iterations(hashing rounds) are set
+    /// depending on the number of key iterations(hashing rounds) used
     fn encrypt(&self, secret: &str) -> Result<Encrypted<Self>, Self::Error> {
         Encrypted::encrypt(KeySaltPair::new(secret)?, self.data_to_encrypt()?.into())
     }
 
     fn encrypt_with_key_and_salt(&self, key_salt_pair: KeySaltPair<Self>) -> Result<Encrypted<Self>, Self::Error> {
         Encrypted::encrypt(key_salt_pair, self.data_to_encrypt()?.into())
+    }
+
+    fn create_key_and_salt<T: AsRef<[u8]>>(secret: T) -> Result<KeySaltPair<Self>, Self::Error> {
+        Ok(KeySaltPair::new(secret)?)
     }
 } 

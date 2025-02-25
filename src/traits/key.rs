@@ -8,14 +8,14 @@ use crate::salt::Salt;
 
 pub trait Key: Default + ZeroizeOnDrop {
 
-    fn create_key(iterations: NonZeroU32, secret: &[u8], salt: &Salt) -> Self {
+    fn create_key(iterations: NonZeroU32, secret: impl AsRef<[u8]>, salt: &Salt) -> Self {
         let mut key = Self::default();
 
         pbkdf2::derive(
             PBKDF2_HMAC_SHA256,
             iterations,
             salt.as_bytes(),
-            secret,
+            secret.as_ref(),
             key.key_data_mut(),
         );
         key

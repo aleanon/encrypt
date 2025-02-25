@@ -1,7 +1,7 @@
 mod encrypted;
 mod key_salt_pair;
 mod error;
-mod encrypted_nonce_sequence;
+mod nonce_sequence;
 mod salt;
 pub mod algorithms;
 pub mod traits;
@@ -9,4 +9,4 @@ pub mod keys;
 
 pub use salt::Salt;
 pub use key_salt_pair::KeySaltPair;
-pub use error::Error;
+pub use error::CryptoError;

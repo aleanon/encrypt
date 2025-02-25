@@ -1,5 +1,5 @@
 
-use super::{salt::Salt, error::Error, traits::encrypt::Encrypt, traits::encryption_algorithm::EncryptionAlgorithm, traits::key::Key};
+use super::{salt::Salt, error::CryptoError, traits::encrypt::Encrypt, traits::encryption_algorithm::EncryptionAlgorithm, traits::key::Key};
 
 
 #[allow(type_alias_bounds)]
@@ -14,9 +14,9 @@ impl<T> KeySaltPair<T> where
 T: Encrypt,
 {
     
-    pub fn new(source: &str) -> Result<Self, Error> {
-        let salt = Salt::new().map_err(|_|Error::FailedToCreateSalt)?;
-        let key= KeyType::<T>::create_key(T::KEY_ITERATIONS, source.as_bytes(), &salt);
+    pub fn new<U: AsRef<[u8]>>(source: U) -> Result<Self, CryptoError> {
+        let salt = Salt::new().map_err(|_|CryptoError::FailedToCreateSalt)?;
+        let key= KeyType::<T>::create_key(T::KEY_ITERATIONS, source, &salt);
         Ok(Self { key, salt})
     }
 

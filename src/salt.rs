@@ -1,4 +1,4 @@
-use super::error::Error;
+use super::error::CryptoError;
 use ring::rand::{SecureRandom, SystemRandom};
 use serde::{Deserialize, Serialize};
 use std::{array::TryFromSliceError, fmt::Debug};
@@ -13,12 +13,12 @@ impl Salt {
 
     pub const LENGTH: usize = 32;
 
-    pub fn new() -> Result<Self, Error> {
+    pub fn new() -> Result<Self, CryptoError> {
         let mut salt = [0u8; Self::LENGTH];
         // make into a static
         SystemRandom::new()
             .fill(&mut salt)
-            .map_err(|_| Error::FailedToCreateSalt)?;
+            .map_err(|_| CryptoError::FailedToCreateSalt)?;
 
         Ok(Self(salt))
     }
