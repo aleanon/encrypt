@@ -1,6 +1,6 @@
 use ring::aead::Algorithm;
 
-use crate::{nonce_sequence::{self, NonceSequence}, traits::{encrypt::Encrypt, key::Key}, CryptoError};
+use crate::{nonce_sequence::NonceSequence, traits::key::Key, CryptoError};
 
 pub trait EncryptionAlgorithm {
     const ALGORITHM_TYPE: &'static Algorithm;

@@ -2,6 +2,7 @@ use std::marker::PhantomData;
 
 use ring::aead::Nonce;
 use serde::{Deserialize, Serialize};
+use zeroize::Zeroize;
 
 use crate::nonce_sequence::NonceSequence;
 
@@ -36,7 +37,10 @@ impl<T> Encrypted<T>
             _marker: PhantomData,
         };
 
-        instance.encrypt(key_salt_pair.key())?;        
+        if let Err(_) = instance.encrypt(key_salt_pair.key()) {
+            instance.data.zeroize();
+            return Err(CryptoError::FailedToEncryptData.into());
+        } 
 
         Ok(instance)
     }
@@ -66,7 +70,10 @@ impl<T> Encrypted<T>
  
         let result:T = T::from_decrypted_data(decrypted)?;
 
-        self.encrypt(&key)?;
+        if let Err(_) = self.encrypt(&key) {
+            self.data.zeroize();
+            return Err(CryptoError::FailedToEncryptData.into());
+        }
 
         Ok(result)
     }
