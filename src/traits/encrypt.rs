@@ -2,10 +2,7 @@ use std::num::NonZeroU32;
 
 
 use crate::{
-    error::CryptoError, 
-    encrypted::Encrypted, 
-    key_salt_pair::KeySaltPair, 
-    traits::encryption_algorithm::EncryptionAlgorithm, 
+    encrypted::Encrypted, error::CryptoError, key_salt_pair::KeySaltPair, traits::encryption_algorithm::EncryptionAlgorithm, Salt 
 };
 
 /// 
@@ -33,7 +30,11 @@ pub trait Encrypt: Sized {
         Encrypted::new(key_salt_pair, self.data_to_encrypt()?.into())
     }
 
-    fn create_key_and_salt<T: AsRef<[u8]>>(secret: T) -> Result<KeySaltPair<Self>, Self::Error> {
+    fn create_key_and_salt(secret: impl AsRef<[u8]>) -> Result<KeySaltPair<Self>, Self::Error> {
         Ok(KeySaltPair::new(secret)?)
+    }
+
+    fn create_key_with_salt(secret: impl AsRef<[u8]>, salt: Salt) -> Result<KeySaltPair<Self>, Self::Error> {
+        Ok(KeySaltPair::with_salt(secret, salt))
     }
 } 

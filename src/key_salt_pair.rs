@@ -19,9 +19,9 @@ impl<T> KeySaltPair<T> where
         Ok(Self { key, salt})
     }
 
-    pub fn from_salt(source: &str, salt: Salt) -> Self {
+    pub fn with_salt(source: impl AsRef<[u8]>, salt: Salt) -> Self {
         Self {
-            key: KeyType::<T>::create_key(T::KEY_ITERATIONS, source.as_bytes(), &salt),
+            key: KeyType::<T>::create_key(T::KEY_ITERATIONS, source.as_ref(), &salt),
             salt: salt,
         }
     }
@@ -91,7 +91,7 @@ mod tests {
     #[test]
     fn test_from_existing_salt() {
         let salt = Salt::new().expect("Failed to create salt");
-        let pair = KeySaltPair::<TestType>::from_salt("test_secret", salt.clone());
+        let pair = KeySaltPair::<TestType>::with_salt("test_secret", salt.clone());
         assert_eq!(pair.salt().as_bytes(), salt.as_bytes());
     }
 
@@ -135,8 +135,8 @@ mod tests {
     #[test]
     fn test_different_secrets_same_salt() {
         let salt = Salt::new().expect("Failed to create salt");
-        let pair1 = KeySaltPair::<TestType>::from_salt("secret1", salt.clone());
-        let pair2 = KeySaltPair::<TestType>::from_salt("secret2", salt);
+        let pair1 = KeySaltPair::<TestType>::with_salt("secret1", salt.clone());
+        let pair2 = KeySaltPair::<TestType>::with_salt("secret2", salt);
 
         assert_eq!(pair1.salt().as_bytes(), pair2.salt().as_bytes());
         assert_ne!(pair1.key().as_bytes(), pair2.key().as_bytes());
@@ -145,8 +145,8 @@ mod tests {
     #[test]
     fn test_same_secret_same_salt() {
         let salt = Salt::new().expect("Failed to create salt");
-        let pair1 = KeySaltPair::<TestType>::from_salt("secret", salt.clone());
-        let pair2 = KeySaltPair::<TestType>::from_salt("secret", salt);
+        let pair1 = KeySaltPair::<TestType>::with_salt("secret", salt.clone());
+        let pair2 = KeySaltPair::<TestType>::with_salt("secret", salt);
 
         assert_eq!(pair1.salt().as_bytes(), pair2.salt().as_bytes());
         assert_eq!(pair1.key().as_bytes(), pair2.key().as_bytes());

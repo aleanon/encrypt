@@ -28,6 +28,7 @@ impl<T> Encrypted<T>
     where 
         T: Encrypt,
     {
+
     
     pub(crate) fn new(mut key_salt_pair: KeySaltPair<T>, data: Vec<u8>) -> Result<Self, T::Error> {
         let mut instance = Self {
