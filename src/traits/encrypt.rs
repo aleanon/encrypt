@@ -2,12 +2,69 @@ use std::num::NonZeroU32;
 
 
 use crate::{
-    encrypted::Encrypted, error::CryptoError, key_salt_pair::KeySaltPair, traits::encryption_algorithm::EncryptionAlgorithm, Salt 
+    encrypted::Encrypted, error::Error, key_salt_pair::KeySaltPair, traits::encryption_algorithm::EncryptionAlgorithm, Salt 
 };
 
-/// 
+/// A trait for types that can be encrypted and decrypted.
+///
+/// This trait provides functionality to encrypt data with a secret password, generating
+/// a key-salt pair in the process. The encrypted data is wrapped in an `Encrypted<T>` type
+/// which can later be decrypted back into the original type.
+///
+/// # Examples
+///
+/// ```
+/// use std::num::NonZeroU32;
+/// use encrypt::{traits::Encrypt, algorithms::AES256GCM};
+///
+/// // Define a type that we want to make encryptable
+/// #[derive(Debug, PartialEq)]
+/// struct SecretMessage(String);
+///
+///
+/// // Implement the Encrypt trait
+/// impl Encrypt for SecretMessage {
+///     type Error = encrypt::Error;
+///     type AlgorithmType = AES256GCM;
+///     
+///     // Optionally override KEY_ITERATIONS for faster/slower key derivation
+///     const KEY_ITERATIONS: NonZeroU32 = NonZeroU32::new(1000).unwrap();
+///
+///     // Convert your type's data into bytes for encryption
+///     fn data_to_encrypt(&self) -> Result<impl Into<Vec<u8>>, Self::Error> {
+///         Ok(self.0.as_bytes().to_vec())
+///     }
+///
+///     // Convert decrypted bytes back into your type
+///     fn from_decrypted_data(data: &[u8]) -> Result<Self, Self::Error> {
+///         Ok(Self(String::from_utf8(data.to_vec()).map_err(|_| encrypt::Error::FailedToParseDecryptedData)?))
+///     }
+/// }
+///
+/// // Example usage:
+/// # fn main() -> Result<(), encrypt::Error> {
+/// let message = SecretMessage("Hello, World!".to_string());
+/// let password = "my-secure-password";
+///
+/// // Encrypt the message
+/// let mut encrypted = message.encrypt(password)?;
+///
+/// // Later, decrypt the message
+/// let decrypted = encrypted.decrypt_with_secret(password)?;
+/// assert_eq!(message, decrypted);
+/// # Ok(())
+/// # }
+/// ```
+///
+/// # Security Considerations
+///
+/// - The `KEY_ITERATIONS` constant determines how many rounds of key derivation are performed.
+///   Higher values are more secure but slower.
+/// - The default encryption methods generate a new random salt for each encryption.
+/// - You can reuse a key-salt pair for multiple encryptions using `encrypt_with_key_and_salt`.
+///
 pub trait Encrypt: Sized {
-    type Error: From<CryptoError>;
+    type Error: From<Error>;
     type AlgorithmType: EncryptionAlgorithm;
 
     /// Number of hashing rounds when creating a key from the provided secret
@@ -37,4 +94,4 @@ pub trait Encrypt: Sized {
     fn create_key_with_salt(secret: impl AsRef<[u8]>, salt: Salt) -> Result<KeySaltPair<Self>, Self::Error> {
         Ok(KeySaltPair::with_salt(secret, salt))
     }
-} 
+}

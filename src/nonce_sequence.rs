@@ -1,16 +1,16 @@
 use ring::{aead::{Nonce, NonceSequence as RingNonceSequence, NONCE_LEN}, rand::{SecureRandom, SystemRandom}};
 
-use crate::error::CryptoError;
+use crate::error::Error;
 
 
 pub struct NonceSequence(Nonce);
 
 impl NonceSequence {
-    pub fn new() -> Result<Self, CryptoError> {
+    pub fn new() -> Result<Self, Error> {
         let mut nonce_bytes = [0u8; NONCE_LEN];
         SystemRandom::new()
             .fill(&mut nonce_bytes)
-            .map_err(|_| CryptoError::FailedToCreateNonce)?;
+            .map_err(|_| Error::FailedToCreateNonce)?;
 
         Ok(Self(Nonce::assume_unique_for_key(nonce_bytes)))
     }

@@ -9,4 +9,4 @@ pub mod keys;
 
 pub use salt::Salt;
 pub use key_salt_pair::KeySaltPair;
-pub use error::CryptoError;
+pub use error::Error;

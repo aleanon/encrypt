@@ -6,7 +6,7 @@ use zeroize::Zeroize;
 
 use crate::nonce_sequence::NonceSequence;
 
-use super::{error::CryptoError, traits::encrypt::Encrypt, key_salt_pair::KeySaltPair, salt::Salt, traits::encryption_algorithm::EncryptionAlgorithm, traits::key::Key};
+use super::{error::Error, traits::encrypt::Encrypt, key_salt_pair::KeySaltPair, salt::Salt, traits::encryption_algorithm::EncryptionAlgorithm, traits::key::Key};
 
 
 
@@ -40,7 +40,7 @@ impl<T> Encrypted<T>
 
         if let Err(_) = instance.encrypt(key_salt_pair.key()) {
             instance.data.zeroize();
-            return Err(CryptoError::FailedToEncryptData.into());
+            return Err(Error::FailedToEncryptData.into());
         } 
 
         Ok(instance)
@@ -48,7 +48,7 @@ impl<T> Encrypted<T>
 
     pub(crate) fn encrypt(&mut self, key: &impl Key) -> Result<(), T::Error> {
         let nonce_sequence = NonceSequence::new()
-            .map_err(|_| CryptoError::FailedToCreateNonce)?;
+            .map_err(|_| Error::FailedToCreateNonce)?;
 
         self.nonce_bytes = nonce_sequence.get_current_as_bytes();
 
@@ -73,7 +73,7 @@ impl<T> Encrypted<T>
 
         if let Err(_) = self.encrypt(&key) {
             self.data.zeroize();
-            return Err(CryptoError::FailedToEncryptData.into());
+            return Err(Error::FailedToEncryptData.into());
         }
 
         Ok(result)
@@ -96,7 +96,7 @@ impl<T> Encrypted<T>
 mod tests {
     use std::{num::NonZeroU32, string::FromUtf8Error};
     use thiserror::Error;
-    use crate::algorithms::AES256GCM;
+    use crate::algorithms::{AES256GCM, CHACHA20POLY1305};
     use super::*;
 
     #[derive(Debug, Error)]
@@ -104,12 +104,12 @@ mod tests {
         #[error("Invalid utf-8 in decrypted data")]
         InvalidUtf8InDecryptedData(#[from] FromUtf8Error),
         #[error("Encrypt Error: {0}")]
-        EncryptError(#[from] CryptoError)
+        EncryptError(#[from] Error)
     }
 
     impl Encrypt for String {
         type Error = MyError;
-        type AlgorithmType = AES256GCM;    
+        type AlgorithmType = CHACHA20POLY1305;    
         const KEY_ITERATIONS: NonZeroU32 = NonZeroU32::new(1).unwrap();
 
         fn data_to_encrypt(&self) -> Result<impl Into<Vec<u8>>, Self::Error> {
@@ -122,7 +122,7 @@ mod tests {
     }
 
     impl Encrypt for Vec<u8> {
-        type Error = CryptoError;
+        type Error = Error;
         type AlgorithmType = AES256GCM;    
         const KEY_ITERATIONS: NonZeroU32 = NonZeroU32::new(1).unwrap();
 

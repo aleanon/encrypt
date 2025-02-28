@@ -1,4 +1,4 @@
-use super::{salt::Salt, error::CryptoError, traits::encrypt::Encrypt, traits::encryption_algorithm::EncryptionAlgorithm, traits::key::Key};
+use super::{salt::Salt, traits::encrypt::Encrypt, traits::encryption_algorithm::EncryptionAlgorithm, traits::key::Key};
 
 
 #[allow(type_alias_bounds)]
@@ -13,8 +13,8 @@ impl<T> KeySaltPair<T> where
     T: Encrypt,
 {
     
-    pub fn new<U: AsRef<[u8]>>(source: U) -> Result<Self, CryptoError> {
-        let salt = Salt::new().map_err(|_|CryptoError::FailedToCreateSalt)?;
+    pub fn new<U: AsRef<[u8]>>(source: U) -> Result<Self, crate::Error> {
+        let salt = Salt::new().map_err(|_|crate::Error::FailedToCreateSalt)?;
         let key= KeyType::<T>::create_key(T::KEY_ITERATIONS, source, &salt);
         Ok(Self { key, salt})
     }
@@ -69,7 +69,7 @@ mod tests {
     // Test implementation
     struct TestType;
     impl Encrypt for TestType {
-        type Error = CryptoError;
+        type Error = crate::Error;
         type AlgorithmType = AES256GCM;
         const KEY_ITERATIONS: NonZeroU32 = NonZeroU32::new(1000).unwrap();
 
