@@ -10,6 +10,7 @@ pub enum Error {
     FailedToDecryptData,
     FailedToGetDataForEncryption,
     FailedToParseDecryptedData,
+    FailedToCreateRandomKey,
 }
 
 
@@ -25,6 +26,7 @@ impl Display for Error {
             Error::FailedToDecryptData => write!(f, "Failed to decrypt data"),
             Error::FailedToGetDataForEncryption => write!(f, "Failed to get data for encryption"),
             Error::FailedToParseDecryptedData => write!(f, "Failed to parse decrypted data"),
+            Error::FailedToCreateRandomKey => write!(f, "Failed to create random key"),
         }
     }
 }

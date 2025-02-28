@@ -5,6 +5,8 @@ use crate::{
     encrypted::Encrypted, error::Error, key_salt_pair::KeySaltPair, traits::encryption_algorithm::EncryptionAlgorithm, Salt 
 };
 
+use super::Key;
+
 /// A trait for types that can be encrypted and decrypted.
 ///
 /// This trait provides functionality to encrypt data with a secret password, generating
@@ -47,7 +49,7 @@ use crate::{
 /// let password = "my-secure-password";
 ///
 /// // Encrypt the message
-/// let mut encrypted = message.encrypt(password)?;
+/// let mut encrypted = message.encrypt_with_secret(password)?;
 ///
 /// // Later, decrypt the message
 /// let decrypted = encrypted.decrypt_with_secret(password)?;
@@ -62,7 +64,7 @@ use crate::{
 ///   Higher values are more secure but slower.
 /// - The default encryption methods generate a new random salt for each encryption.
 /// - You can reuse a key-salt pair for multiple encryptions using `encrypt_with_key_and_salt`.
-///
+/// - Using the 
 pub trait Encrypt: Sized {
     type Error: From<Error>;
     type AlgorithmType: EncryptionAlgorithm;
@@ -79,19 +81,29 @@ pub trait Encrypt: Sized {
     /// Encrypts data supplied from this type and wraps it in an [Encrypted<T>]
     /// This method will create a new [Key] and can stall for a significant amount of time
     /// depending on the number of key iterations(hashing rounds) used
-    fn encrypt(&self, secret: &str) -> Result<Encrypted<Self>, Self::Error> {
+    fn encrypt_with_secret(&self, secret: &str) -> Result<Encrypted<Self>, Self::Error> {
         Encrypted::new(KeySaltPair::new(secret)?, self.data_to_encrypt()?.into())
     }
 
-    fn encrypt_with_key_and_salt(&self, key_salt_pair: KeySaltPair<Self>) -> Result<Encrypted<Self>, Self::Error> {
+    fn encrypt_with_key_salt_pair(&self, key_salt_pair: KeySaltPair<Self>) -> Result<Encrypted<Self>, Self::Error> {
         Encrypted::new(key_salt_pair, self.data_to_encrypt()?.into())
     }
 
-    fn create_key_and_salt(secret: impl AsRef<[u8]>) -> Result<KeySaltPair<Self>, Self::Error> {
+    fn encrypt_with_key(&self, key: &impl Key) -> Result<Encrypted<Self>, Self::Error> {
+        Encrypted::new_without_salt(key, self.data_to_encrypt()?.into())
+    }
+
+    fn create_new_key_salt_pair(secret: impl AsRef<[u8]>) -> Result<KeySaltPair<Self>, Self::Error> {
         Ok(KeySaltPair::new(secret)?)
     }
 
     fn create_key_with_salt(secret: impl AsRef<[u8]>, salt: Salt) -> Result<KeySaltPair<Self>, Self::Error> {
         Ok(KeySaltPair::with_salt(secret, salt))
+    }
+
+
+    /// This is the fastest way to create a key, this key can not be recreated and must be saved for later use
+    fn create_random_key() -> Result<impl Key, Self::Error> {
+        Ok(<<Self::AlgorithmType as EncryptionAlgorithm>::KeyType as Key>::create_random_key()?)
     }
 }

@@ -19,7 +19,7 @@ type KeyType<T> where T: Encrypt = <T::AlgorithmType as EncryptionAlgorithm>::Ke
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Encrypted<T: Encrypt> {
     data: Vec<u8>,
-    salt: Salt,
+    salt: Option<Salt>,
     nonce_bytes: [u8; 12],
     _marker: PhantomData<T>
 }
@@ -29,11 +29,10 @@ impl<T> Encrypted<T>
         T: Encrypt,
     {
 
-    
     pub(crate) fn new(mut key_salt_pair: KeySaltPair<T>, data: Vec<u8>) -> Result<Self, T::Error> {
         let mut instance = Self {
             data,
-            salt: key_salt_pair.take_salt(),
+            salt: Some(key_salt_pair.take_salt()),
             nonce_bytes: [0u8; 12],
             _marker: PhantomData,
         };
@@ -45,6 +44,22 @@ impl<T> Encrypted<T>
 
         Ok(instance)
     }
+    
+    pub(crate) fn new_without_salt(key: &impl Key, data: Vec<u8>) -> Result<Self, T::Error> {
+        let mut instance = Self {
+            data,
+            salt: None,
+            nonce_bytes: [0u8; 12],
+            _marker: PhantomData,
+        };
+        if let Err(_) = instance.encrypt(key) {
+            instance.data.zeroize();
+            return Err(Error::FailedToEncryptData.into());
+        }
+
+        Ok(instance)
+    }
+    
 
     pub(crate) fn encrypt(&mut self, key: &impl Key) -> Result<(), T::Error> {
         let nonce_sequence = NonceSequence::new()
@@ -57,8 +72,13 @@ impl<T> Encrypted<T>
         Ok(())
     }
 
+    /// This method can be very slow, depending on the number of key iterations used when creating the key
+    /// for fast decryption use the `decrypt_with_key()` method instead.
     pub fn decrypt_with_secret(&mut self, secret: impl AsRef<[u8]>) -> Result<T, T::Error> {
-        let key = KeyType::<T>::create_key(T::KEY_ITERATIONS, secret, &self.salt);
+        let Some(salt) = &self.salt else {
+            return Err(Error::FailedToDecryptData.into());
+        };
+        let key = KeyType::<T>::create_key(T::KEY_ITERATIONS, secret, salt);
         self.decrypt_with_key(key)        
     }
 
@@ -69,7 +89,7 @@ impl<T> Encrypted<T>
         
         let decrypted = Algo::<T>::decrypt(self.data.as_mut_slice(), &key, nonce_sequence)?;
  
-        let result:T = T::from_decrypted_data(decrypted)?;
+        let result = T::from_decrypted_data(decrypted)?;
 
         if let Err(_) = self.encrypt(&key) {
             self.data.zeroize();
@@ -79,8 +99,8 @@ impl<T> Encrypted<T>
         Ok(result)
     }
 
-    pub fn salt(&self) -> &Salt {
-        &self.salt
+    pub fn salt(&self) -> Option<&Salt> {
+        self.salt.as_ref()
     }
 
     pub fn encrypted_data(&self) -> &[u8] {
@@ -139,7 +159,7 @@ mod tests {
     fn test_basic_encryption_decryption() {
         let phrase = String::from("encrypt this");
         let secret = "password123";
-        let mut encrypted = phrase.encrypt(secret).expect("Failed to encrypt data");
+        let mut encrypted = phrase.encrypt_with_secret(secret).expect("Failed to encrypt data");
 
         if let Ok(cypher_text) = std::str::from_utf8(encrypted.encrypted_data()) {
             assert!(!cypher_text.contains(&phrase))
@@ -153,7 +173,7 @@ mod tests {
     fn test_empty_string() {
         let empty = String::new();
         let secret = "password123";
-        let mut encrypted = empty.encrypt(secret).expect("Failed to encrypt empty string");
+        let mut encrypted = empty.encrypt_with_secret(secret).expect("Failed to encrypt empty string");
         let decrypted = encrypted.decrypt_with_secret(secret).expect("Failed to decrypt empty string");
         assert_eq!(empty, decrypted);
     }
@@ -162,7 +182,7 @@ mod tests {
     fn test_binary_data() {
         let data = vec![1, 2, 3, 4, 5];
         let secret = "binary_secret";
-        let mut encrypted = data.encrypt(secret).expect("Failed to encrypt binary data");
+        let mut encrypted = data.encrypt_with_secret(secret).expect("Failed to encrypt binary data");
         let decrypted = encrypted.decrypt_with_secret(secret).expect("Failed to decrypt binary data");
         assert_eq!(data, decrypted);
     }
@@ -173,7 +193,7 @@ mod tests {
         let secret = "correct_password";
         let wrong_secret = "wrong_password";
         
-        let mut encrypted = phrase.encrypt(secret).expect("Failed to encrypt data");
+        let mut encrypted = phrase.encrypt_with_secret(secret).expect("Failed to encrypt data");
         let result = encrypted.decrypt_with_secret(wrong_secret);
         assert!(result.is_err());
     }
@@ -183,7 +203,7 @@ mod tests {
         let phrase = String::from("test encryption state");
         let secret = "secret123";
         
-        let mut encrypted = phrase.encrypt(secret).expect("Failed to encrypt initially");
+        let mut encrypted = phrase.encrypt_with_secret(secret).expect("Failed to encrypt initially");
         let initial_encrypted_data = encrypted.encrypted_data().to_vec();
         
         let decrypted = encrypted.decrypt_with_secret(secret).expect("Failed to decrypt");
@@ -199,8 +219,8 @@ mod tests {
         let phrase = String::from("test salt");
         let secret = "password";
         
-        let encrypted1 = phrase.encrypt(secret).expect("Failed to encrypt first time");
-        let encrypted2 = phrase.encrypt(secret).expect("Failed to encrypt second time");
+        let encrypted1 = phrase.encrypt_with_secret(secret).expect("Failed to encrypt first time");
+        let encrypted2 = phrase.encrypt_with_secret(secret).expect("Failed to encrypt second time");
         
         assert_ne!(encrypted1.salt(), encrypted2.salt());
         
@@ -212,7 +232,7 @@ mod tests {
         let phrase = String::from("test corruption");
         let secret = "password";
         
-        let mut encrypted = phrase.encrypt(secret).expect("Failed to encrypt");
+        let mut encrypted = phrase.encrypt_with_secret(secret).expect("Failed to encrypt");
         
         let mut corrupted_data = encrypted.encrypted_data().to_vec();
         if let Some(byte) = corrupted_data.get_mut(0) {
@@ -229,7 +249,7 @@ mod tests {
         let phrase = String::from("Hello 🌍 World! 你好世界");
         let secret = "password123";
         
-        let mut encrypted = phrase.encrypt(secret).expect("Failed to encrypt unicode");
+        let mut encrypted = phrase.encrypt_with_secret(secret).expect("Failed to encrypt unicode");
         let decrypted = encrypted.decrypt_with_secret(secret).expect("Failed to decrypt unicode");
         
         assert_eq!(phrase, decrypted);

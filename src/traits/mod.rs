@@ -1,6 +1,6 @@
-pub mod encryption_algorithm; 
-pub mod encrypt;
-pub mod key;
+pub(crate) mod encryption_algorithm; 
+pub(crate) mod encrypt;
+pub(crate) mod key;
 
 
 pub use encryption_algorithm::EncryptionAlgorithm;

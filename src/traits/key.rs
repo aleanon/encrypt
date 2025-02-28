@@ -1,6 +1,6 @@
 use std::num::NonZeroU32;
 
-use ring::pbkdf2::{self, PBKDF2_HMAC_SHA256};
+use ring::{pbkdf2::{self, PBKDF2_HMAC_SHA256}, rand::{SecureRandom, SystemRandom}};
 use zeroize::ZeroizeOnDrop;
 
 use crate::salt::Salt;
@@ -19,6 +19,14 @@ pub trait Key: Default + ZeroizeOnDrop {
             key.as_bytes_mut(),
         );
         key
+    }
+
+    fn create_random_key() -> Result<Self, crate::Error> {
+        let mut key = Self::default();
+        SystemRandom::new()
+            .fill(key.as_bytes_mut())
+            .map_err(|_| crate::Error::FailedToCreateRandomKey)?;
+        Ok(key)
     }
 
     fn as_bytes_mut(&mut self) -> &mut [u8];
