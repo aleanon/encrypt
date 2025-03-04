@@ -1,10 +1,7 @@
-use std::marker::PhantomData;
 
-use ring::aead::Nonce;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
-use crate::nonce_sequence::NonceSequence;
 
 use super::{error::Error, traits::encrypt::Encrypt, key_salt_pair::KeySaltPair, salt::Salt, traits::encryption_algorithm::EncryptionAlgorithm, traits::key::Key};
 
@@ -14,14 +11,14 @@ use super::{error::Error, traits::encrypt::Encrypt, key_salt_pair::KeySaltPair, 
 type Algo<T> where T: Encrypt = T::AlgorithmType;
 #[allow(type_alias_bounds)]
 type KeyType<T> where T: Encrypt = <T::AlgorithmType as EncryptionAlgorithm>::KeyType;
-
+#[allow(type_alias_bounds)]
+type NonceBytes<T> where T: Encrypt = <T::AlgorithmType as EncryptionAlgorithm>::Nonce;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Encrypted<T: Encrypt> {
     data: Vec<u8>,
     salt: Option<Salt>,
-    nonce_bytes: [u8; 12],
-    _marker: PhantomData<T>
+    nonce_bytes: NonceBytes<T>,
 }
 
 impl<T> Encrypted<T> 
@@ -33,8 +30,7 @@ impl<T> Encrypted<T>
         let mut instance = Self {
             data,
             salt: Some(key_salt_pair.take_salt()),
-            nonce_bytes: [0u8; 12],
-            _marker: PhantomData,
+            nonce_bytes: NonceBytes::<T>::default(),
         };
 
         if let Err(_) = instance.encrypt(key_salt_pair.key()) {
@@ -44,14 +40,14 @@ impl<T> Encrypted<T>
 
         Ok(instance)
     }
-    
+
     pub(crate) fn new_without_salt(key: &impl Key, data: Vec<u8>) -> Result<Self, T::Error> {
         let mut instance = Self {
             data,
             salt: None,
-            nonce_bytes: [0u8; 12],
-            _marker: PhantomData,
+            nonce_bytes: NonceBytes::<T>::default(),
         };
+
         if let Err(_) = instance.encrypt(key) {
             instance.data.zeroize();
             return Err(Error::FailedToEncryptData.into());
@@ -62,12 +58,8 @@ impl<T> Encrypted<T>
     
 
     pub(crate) fn encrypt(&mut self, key: &impl Key) -> Result<(), T::Error> {
-        let nonce_sequence = NonceSequence::new()
-            .map_err(|_| Error::FailedToCreateNonce)?;
-
-        self.nonce_bytes = nonce_sequence.get_current_as_bytes();
-
-        Algo::<T>::encrypt(&mut self.data, key, nonce_sequence)?;
+    
+        self.nonce_bytes = Algo::<T>::encrypt(&mut self.data, key)?;
         
         Ok(())
     }
@@ -82,12 +74,8 @@ impl<T> Encrypted<T>
         self.decrypt_with_key(key)        
     }
 
-    pub fn decrypt_with_key(&mut self, key: impl Key) -> Result<T, T::Error> {
-        let nonce_sequence = NonceSequence::with_nonce(&Nonce::assume_unique_for_key(
-            self.nonce_bytes.clone(),
-        ));
-        
-        let decrypted = Algo::<T>::decrypt(self.data.as_mut_slice(), &key, nonce_sequence)?;
+    pub fn decrypt_with_key(&mut self, key: impl Key) -> Result<T, T::Error> {        
+        let decrypted = Algo::<T>::decrypt(self.data.as_mut_slice(), &key, &self.nonce_bytes)?;
  
         let result = T::from_decrypted_data(decrypted)?;
 

@@ -19,18 +19,24 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-encrypt = "0.1.0"
+encrypt = { git = "https://github.com/aleanon/encrypt.git", version = "0.1.0" }
 ```
+
+Or write this in your terminal:
+
+cargo add --git "https://github.com/aleanon/encrypt.git"
 
 ## Example
 
 Here's how to implement encryption for a custom type:
 
 ```rust
+extern crate encrypt;
+
 use encrypt::{
-    Encrypt,
+    traits::Encrypt,
+    Error,
     algorithms::AES256GCM,
-    CryptoError,
 };
 
 // Your type that needs encryption
@@ -41,7 +47,7 @@ struct SecretMessage {
 
 // Implement the Encrypt trait
 impl Encrypt for SecretMessage {
-    type Error = CryptoError;  // Use the built-in error type
+    type Error = Error;  // Use the built-in error type
     type AlgorithmType = AES256GCM;  // Choose encryption algorithm
 
     // Convert your data to bytes for encryption
@@ -52,30 +58,29 @@ impl Encrypt for SecretMessage {
     // Convert decrypted bytes back to your type
     fn from_decrypted_data(data: &[u8]) -> Result<Self, Self::Error> {
         let content = String::from_utf8(data.to_vec())
-            .map_err(|_| CryptoError::FailedToDecryptData)?;
+            .map_err(|_| Error::FailedToParseDecryptedData)?;
         
         Ok(Self { content })
     }
 }
 
 // Example usage
-fn main() -> Result<(), CryptoError> {
+fn main() -> Result<(), Error> {
     let message = SecretMessage {
         content: "Hello, World!".to_string(),
     };
 
     // Encrypt the message
-    let encrypted = message.encrypt("my-secret-password")?;
+    let mut encrypted = message.encrypt_with_secret("my-secret-password")?;
 
     // Decrypt the message
-    let decrypted = encrypted.decrypt("my-secret-password")?;
+    let decrypted = encrypted.decrypt_with_secret("my-secret-password")?;
     assert_eq!(decrypted.content, "Hello, World!");
 
     // You can also pre-generate key and salt for reuse
-    let key_salt = SecretMessage::create_key_and_salt("my-secret-password")?;
+    let key_salt = SecretMessage::create_new_key_salt_pair("my-secret-password")?;
     
-    let encrypted = message.encrypt_with_key_and_salt(key_salt)?;
-
+    let encrypted = message.encrypt_with_key_salt_pair(key_salt)?;
     Ok(())
 }
 ```
@@ -86,7 +91,15 @@ fn main() -> Result<(), CryptoError> {
 
 You can customize the number of key derivation iterations by overriding the `KEY_ITERATIONS` constant:
 
-```rust
+```rust{no_run}
+extern crate encrypt;
+use encrypt::traits::Encrypt;
+
+#[derive(Debug)]
+struct SecretMessage {
+    content: String,
+}
+
 use std::num::NonZeroU32;
 
 impl Encrypt for SecretMessage {
@@ -101,15 +114,43 @@ impl Encrypt for SecretMessage {
 
 Choose from available algorithms based on your security needs:
 
-```rust
-// AES-128-GCM for faster encryption with good security
-type AlgorithmType = AES128GCM;
+```rust{no_run}
+extern crate encrypt;
 
-// AES-256-GCM for maximum security
-type AlgorithmType = AES256GCM;
+use encrypt::{
+    traits::Encrypt,
+    Error,
+    algorithms::{
+        AES128GCM, AES256GCM,
+        chacha::CHACHA20POLY1305,
+    },
+};
 
-// ChaCha20-Poly1305 for good performance on platforms without AES hardware acceleration
-type AlgorithmType = CHACHA20POLY1305;
+// Example type
+struct SecretData;
+
+impl Encrypt for SecretData {
+    type Error = Error;
+    
+    // AES-128-GCM for faster encryption with good security
+    type AlgorithmType = AES128GCM;
+    
+    // ... rest of implementation
+}
+
+// Or use AES-256-GCM for maximum security
+impl Encrypt for SecretData {
+    type Error = Error;
+    type AlgorithmType = AES256GCM;
+    // ...
+}
+
+// Or ChaCha20-Poly1305 for good performance on platforms without AES hardware
+impl Encrypt for SecretData {
+    type Error = Error;
+    type AlgorithmType = CHACHA20POLY1305;
+    // ...
+}
 ```
 
 ## Security Notes

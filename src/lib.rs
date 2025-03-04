@@ -10,3 +10,7 @@ pub mod keys;
 pub use salt::Salt;
 pub use key_salt_pair::KeySaltPair;
 pub use error::Error;
+
+#[doc = include_str!("../README.md")]
+#[cfg(doctest)]
+pub struct ReadmeDoctests;
