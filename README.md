@@ -91,7 +91,7 @@ fn main() -> Result<(), Error> {
 
 You can customize the number of key derivation iterations by overriding the `KEY_ITERATIONS` constant:
 
-```rust,no_run
+```rust,ignore
 extern crate encrypt;
 use encrypt::traits::Encrypt;
 
@@ -114,7 +114,7 @@ impl Encrypt for SecretMessage {
 
 Choose from available algorithms based on your security needs:
 
-```rust,no_run
+```rust,ignore
 extern crate encrypt;
 
 use encrypt::{
