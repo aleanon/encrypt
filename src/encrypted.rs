@@ -33,10 +33,7 @@ impl<T> Encrypted<T>
             nonce_bytes: NonceBytes::<T>::default(),
         };
 
-        if let Err(_) = instance.encrypt(key_salt_pair.key()) {
-            instance.data.zeroize();
-            return Err(Error::FailedToEncryptData.into());
-        } 
+        instance.encrypt(key_salt_pair.key())?; 
 
         Ok(instance)
     }
@@ -48,19 +45,18 @@ impl<T> Encrypted<T>
             nonce_bytes: NonceBytes::<T>::default(),
         };
 
-        if let Err(_) = instance.encrypt(key) {
-            instance.data.zeroize();
-            return Err(Error::FailedToEncryptData.into());
-        }
+        instance.encrypt(key)?;
 
         Ok(instance)
     }
     
 
     pub(crate) fn encrypt(&mut self, key: &impl Key) -> Result<(), T::Error> {
-    
-        self.nonce_bytes = Algo::<T>::encrypt(&mut self.data, key)?;
-        
+        let Ok(nonce_bytes) = Algo::<T>::encrypt(&mut self.data, key) else {
+            self.data.zeroize();
+            return Err(Error::FailedToEncryptData.into());
+        };
+        self.nonce_bytes = nonce_bytes;
         Ok(())
     }
 

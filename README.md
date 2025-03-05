@@ -91,7 +91,7 @@ fn main() -> Result<(), Error> {
 
 You can customize the number of key derivation iterations by overriding the `KEY_ITERATIONS` constant:
 
-```rust{no_run}
+```rust,no_run
 extern crate encrypt;
 use encrypt::traits::Encrypt;
 
@@ -114,7 +114,7 @@ impl Encrypt for SecretMessage {
 
 Choose from available algorithms based on your security needs:
 
-```rust{no_run}
+```rust,no_run
 extern crate encrypt;
 
 use encrypt::{
@@ -160,7 +160,7 @@ impl Encrypt for SecretData {
   - Automatic salt generation
   - Authenticated encryption (AEAD)
 - Key material is automatically zeroized when dropped
-- Built on the audited [ring](https://github.com/briansmith/ring) cryptography library
+- Built on the [ring](https://github.com/briansmith/ring) cryptography library
 
 ## License
 
