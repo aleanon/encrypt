@@ -245,8 +245,8 @@ mod tests {
         let phrase = String::from("encrypt this");
         let secret = "password123";
         let mut encrypted = phrase.encrypt_with_secret(secret).expect("Failed to encrypt data");        
-        let decrypted = encrypted.decrypt_with_secret(secret).expect("Failed to decrypt data");
-        let decrypted = encrypted.decrypt_with_secret(secret).unwrap();
+        let _decrypted = encrypted.decrypt_with_secret(secret).expect("Failed to decrypt data");
+        let _decrypted = encrypted.decrypt_with_secret(secret).unwrap();
         let decrypted = encrypted.decrypt_with_secret(secret).unwrap();
         assert_eq!(phrase, decrypted);
     }

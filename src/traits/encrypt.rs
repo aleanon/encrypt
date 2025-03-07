@@ -81,7 +81,7 @@ pub trait Encrypt: Sized {
     /// Encrypts data supplied from this type and wraps it in an [Encrypted<T>]
     /// This method will create a new [Key] and can stall for a significant amount of time
     /// depending on the number of key iterations(hashing rounds) used
-    fn encrypt_with_secret(&self, secret: &str) -> Result<Encrypted<Self>, Self::Error> {
+    fn encrypt_with_secret(&self, secret: impl AsRef<[u8]>) -> Result<Encrypted<Self>, Self::Error> {
         Encrypted::new(KeySaltPair::new(secret)?, self.data_to_encrypt()?.into())
     }
 
