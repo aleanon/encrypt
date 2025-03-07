@@ -67,18 +67,19 @@ impl<T> Encrypted<T>
             return Err(Error::FailedToDecryptData.into());
         };
         let key = KeyType::<T>::create_key(T::KEY_ITERATIONS, secret, salt);
-        self.decrypt_with_key(key)        
+        self.decrypt_with_key(&key)        
     }
 
-    pub fn decrypt_with_key(&mut self, key: impl Key) -> Result<T, T::Error> {        
-        let decrypted = Algo::<T>::decrypt(self.data.as_mut_slice(), &key, &self.nonce_bytes)?;
- 
-        let result = T::from_decrypted_data(decrypted)?;
-
-        if let Err(_) = self.encrypt(&key) {
-            self.data.zeroize();
-            return Err(Error::FailedToEncryptData.into());
-        }
+    pub fn decrypt_with_key(&mut self, key: &impl Key) -> Result<T, T::Error> {        
+        let (result, data_length) = {
+            let decrypted = Algo::<T>::decrypt(self.data.as_mut_slice(), key, &self.nonce_bytes)?;
+     
+            let result = T::from_decrypted_data(decrypted)?;
+            (result, decrypted.len())
+        };
+        
+        self.data.truncate(data_length);
+        self.encrypt(key)?;
 
         Ok(result)
     }
@@ -236,6 +237,17 @@ mod tests {
         let mut encrypted = phrase.encrypt_with_secret(secret).expect("Failed to encrypt unicode");
         let decrypted = encrypted.decrypt_with_secret(secret).expect("Failed to decrypt unicode");
         
+        assert_eq!(phrase, decrypted);
+    }
+
+    #[test]
+    fn test_multiple_decryption_recryption() {
+        let phrase = String::from("encrypt this");
+        let secret = "password123";
+        let mut encrypted = phrase.encrypt_with_secret(secret).expect("Failed to encrypt data");        
+        let decrypted = encrypted.decrypt_with_secret(secret).expect("Failed to decrypt data");
+        let decrypted = encrypted.decrypt_with_secret(secret).unwrap();
+        let decrypted = encrypted.decrypt_with_secret(secret).unwrap();
         assert_eq!(phrase, decrypted);
     }
 }

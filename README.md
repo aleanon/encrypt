@@ -31,7 +31,6 @@ cargo add --git "https://github.com/aleanon/encrypt.git"
 Here's how to implement encryption for a custom type:
 
 ```rust
-extern crate encrypt;
 
 use encrypt::{
     traits::Encrypt,
@@ -91,8 +90,9 @@ fn main() -> Result<(), Error> {
 
 You can customize the number of key derivation iterations by overriding the `KEY_ITERATIONS` constant:
 
-```rust,ignore
-extern crate encrypt;
+```rust
+!#[doc(test(attr(ignore)))]
+
 use encrypt::traits::Encrypt;
 
 #[derive(Debug)]
@@ -114,8 +114,7 @@ impl Encrypt for SecretMessage {
 
 Choose from available algorithms based on your security needs:
 
-```rust,ignore
-extern crate encrypt;
+```rust
 
 use encrypt::{
     traits::Encrypt,
