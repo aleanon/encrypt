@@ -70,16 +70,16 @@ fn main() -> Result<(), Error> {
     };
 
     // Encrypt the message
-    let mut encrypted = message.encrypt_with_secret("my-secret-password")?;
+    let mut encrypted = message.encrypt_with_secret("my-secret-password", [])?;
 
     // Decrypt the message
-    let decrypted = encrypted.decrypt_with_secret("my-secret-password")?;
+    let decrypted = encrypted.decrypt_with_secret("my-secret-password", [])?;
     assert_eq!(decrypted.content, "Hello, World!");
 
     // You can also pre-generate key and salt for reuse
     let key_salt = SecretMessage::create_new_key_salt_pair("my-secret-password")?;
     
-    let encrypted = message.encrypt_with_key_salt_pair(key_salt)?;
+    let encrypted = message.encrypt_with_key_salt_pair(key_salt, [])?;
     Ok(())
 }
 ```
@@ -91,7 +91,6 @@ fn main() -> Result<(), Error> {
 You can customize the number of key derivation iterations by overriding the `KEY_ITERATIONS` constant:
 
 ```rust
-!#[doc(test(attr(ignore)))]
 
 use encrypt::traits::Encrypt;
 

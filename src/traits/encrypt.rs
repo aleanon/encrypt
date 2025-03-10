@@ -49,10 +49,10 @@ use super::Key;
 /// let password = "my-secure-password";
 ///
 /// // Encrypt the message
-/// let mut encrypted = message.encrypt_with_secret(password)?;
+/// let mut encrypted = message.encrypt_with_secret(password, [])?;
 ///
 /// // Later, decrypt the message
-/// let decrypted = encrypted.decrypt_with_secret(password)?;
+/// let decrypted = encrypted.decrypt_with_secret(password, [])?;
 /// assert_eq!(message, decrypted);
 /// # Ok(())
 /// # }
@@ -81,16 +81,16 @@ pub trait Encrypt: Sized {
     /// Encrypts data supplied from this type and wraps it in an [Encrypted<T>]
     /// This method will create a new [Key] and can stall for a significant amount of time
     /// depending on the number of key iterations(hashing rounds) used
-    fn encrypt_with_secret(&self, secret: impl AsRef<[u8]>) -> Result<Encrypted<Self>, Self::Error> {
-        Encrypted::new(KeySaltPair::new(secret)?, self.data_to_encrypt()?.into())
+    fn encrypt_with_secret(&self, secret: impl AsRef<[u8]>, aad: impl AsRef<[u8]>) -> Result<Encrypted<Self>, Self::Error> {
+        Encrypted::new(KeySaltPair::new(secret)?, self.data_to_encrypt()?.into(), aad)
     }
 
-    fn encrypt_with_key_salt_pair(&self, key_salt_pair: KeySaltPair<Self>) -> Result<Encrypted<Self>, Self::Error> {
-        Encrypted::new(key_salt_pair, self.data_to_encrypt()?.into())
+    fn encrypt_with_key_salt_pair(&self, key_salt_pair: KeySaltPair<Self>, aad: impl AsRef<[u8]>) -> Result<Encrypted<Self>, Self::Error> {
+        Encrypted::new(key_salt_pair, self.data_to_encrypt()?.into(), aad)
     }
 
-    fn encrypt_with_key(&self, key: &impl Key) -> Result<Encrypted<Self>, Self::Error> {
-        Encrypted::new_without_salt(key, self.data_to_encrypt()?.into())
+    fn encrypt_with_key(&self, key: &impl Key, aad: impl AsRef<[u8]>) -> Result<Encrypted<Self>, Self::Error> {
+        Encrypted::new_without_salt(key, self.data_to_encrypt()?.into(), aad)
     }
 
     fn create_new_key_salt_pair(secret: impl AsRef<[u8]>) -> Result<KeySaltPair<Self>, Self::Error> {
